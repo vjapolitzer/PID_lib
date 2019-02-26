@@ -40,8 +40,8 @@ bool PID::compute()
                                                                     // error for I-term
 
         *(this->controllerOutput) = PID::clampToEndpoints((this->kp * error) + 
-                                                        this->errorSum + 
-                                                        (this->kd * dError));
+                                                          this->errorSum + 
+                                                          (this->kd * dError));
 
         this->prevError = error;
         this->prevTime = currTime;
