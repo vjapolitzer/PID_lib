@@ -3,22 +3,23 @@
 
 PID::PID(double* input, double* output, double* setpoint,
          double initKp, double initKi, double initKd,
-         double outMin, double outMax, Direction direction)
+         double outMin, double outMax, Direction direction,
+         unsigned long period)
 {
     this->controllerInput = input;
     this->controllerOutput = output;
     this->controllerSetpoint = setpoint;
 
-    this->sampleTime = DEFAULT_SAMPLE_TIME;
-
-    this->direction = direction;
-    
     this->outMin = outMin;
     this->outMax = outMax;
+
+    this->direction = direction;
+
+    this->period = period;
     
     PID::setGains(initKp, initKi, initKd);
 
-    this->prevTime = millis() - sampleTime;
+    this->prevTime = millis() - period;
 
     this->enabled = false;
 }
@@ -29,7 +30,7 @@ bool PID::compute()
 
     unsigned long currTime = millis();
     unsigned long timeChange = currTime - prevTime;
-    if(timeChange >= this->sampleTime)
+    if(timeChange >= this->period)
     {
         double input = *(this->controllerInput);
         double error = *(this->controllerSetpoint) - input;
@@ -69,10 +70,10 @@ void PID::setGains(double kp, double ki, double kd)
 {
     if (kp < 0 || ki < 0 || kd < 0) return;
 
-    double sampleTimeInSec = ((double)sampleTime) / 1000.0;
+    double periodInSec = ((double)this->period) / 1000.0;
     this->kp = kp;
-    this->ki = ki * sampleTimeInSec; // do this now to save
-    this->kd = kd / sampleTimeInSec; // computations later
+    this->ki = ki * periodInSec; // do this now to save
+    this->kd = kd / periodInSec; // computations later
 
     this->kpDisp = kp;
     this->kiDisp = ki; // not optimized so the user can
@@ -86,12 +87,12 @@ void PID::setGains(double kp, double ki, double kd)
     }
 }
 
-void PID::setSampleTime(unsigned long sampleTime)
+void PID::setPeriod(unsigned long period)
 {
-    double ratio  = (double)sampleTime / (double)this->sampleTime;
+    double ratio  = (double)period / (double)this->period;
     this->ki *= ratio; // Adjust the I-term and D-term to
     this->kd /= ratio; // account for the new period
-    this->sampleTime = sampleTime;
+    this->period = period;
 }
 
 double PID::getKp()

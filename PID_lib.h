@@ -10,7 +10,7 @@
 #ifndef PID_LIB_H
 #define PID_LIB_H
 
-#define DEFAULT_SAMPLE_TIME 100
+#define DEFAULT_PERIOD 100
 #define DEFAULT_OUTPUT_MIN 0
 #define DEFAULT_OUTPUT_MAX 255
 
@@ -31,18 +31,20 @@ class PID
         * ......double outMax -- maximum value for controller output
         * ......Direction direction -- Direct for +input -> +output
         * ......                       Reverse for  +input -> -output
+        * ......unsigned long period -- update period in ms
         * ...Returns:
         * ......Nothing
         */
         PID(double*, double*, double*,
             double, double, double,
-            double, double, Direction);
+            double, double, Direction,
+            unsigned long period = DEFAULT_PERIOD);
         
         /* compute()
         * ...Computes the output value based on input, with PID.
         * ...Call every time loop() in your main file executes.
         * ...Only computes if the controller has been enabled with
-        * ...start() AND sampleTime has elapsed.
+        * ...start() AND period has elapsed.
         * ...Returns:
         * ......true if new output computed, false otherwise
         */
@@ -76,7 +78,7 @@ class PID
         */
         void setGains(double, double, double);
 
-        /* setSampleTime(...)
+        /* setPeriod(...)
         * Sets the period with which the calculation is performed 
         * and adjusts the I and D gains accordingly
         * ...Parameters:
@@ -84,7 +86,7 @@ class PID
         * ...Returns:
         * ......Nothing
         */
-        void setSampleTime(unsigned long);
+        void setPeriod(unsigned long);
 
         /* getKp()
         * ...Returns:
@@ -142,7 +144,7 @@ class PID
         double errorSum; // this is the I-term, accumulated error
         double prevError; // for tracking the 
 
-        unsigned long sampleTime; // sampling period in milliseconds
+        unsigned long period; // update period in milliseconds
         double outMin, outMax; // range for clamping the output
 
         bool enabled;
