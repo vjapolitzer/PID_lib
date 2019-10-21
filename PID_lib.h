@@ -2,9 +2,8 @@
  * Arduino PID Library - Version 1.0
  * by Vincent Politzer
  * 
- * inspired by Brett Beauregard's PID library
+ * Special thanks to Dan Landau
  *
- * This Library is licensed under the MIT License
  **********************************************************************************************/
 
 #ifndef PID_LIB_H
@@ -14,6 +13,8 @@
 #define DEFAULT_OUTPUT_MIN 0
 #define DEFAULT_OUTPUT_MAX 255
 
+#define INT_RESOLUTION 100
+
 enum Direction {Direct, Reverse};
 
 class PID
@@ -21,23 +22,17 @@ class PID
     public:
         /* Constructor
         * ...Parameters:
-        * ......double* input -- pointer to user's input
-        * ......double* output -- pointer to user's output
-        * ......double* setpoint -- pointer to user's setpoint
-        * ......double initKp -- initial P gain value
-        * ......double initKi -- initial I gain value
-        * ......double initKd -- initial D gain value˘
-        * ......double outMin -- minimum value for controller output
-        * ......double outMax -- maximum value for controller output
-        * ......Direction direction -- Direct for +input -> +output
-        * ......                       Reverse for  +input -> -output
+        * ......int16_t kp -- P gain value
+        * ......int16_t ki -- I gain value
+        * ......int16_t kd -- D gain value
+        * ......int16_t outMin -- minimum value for controller output
+        * ......int16_t outMax -- maximum value for controller output
         * ......unsigned long period -- update period in ms
         * ...Returns:
         * ......Nothing
         */
-        PID(double*, double*, double*,
-            double, double, double,
-            double, double, Direction,
+        PID(int16_t, int16_t, int16_t,
+            int16_t, int16_t,
             unsigned long period = DEFAULT_PERIOD);
         
         /* compute()
@@ -48,7 +43,9 @@ class PID
         * ...Returns:
         * ......true if new output computed, false otherwise
         */
-        bool compute();
+        int16_t compute(double);
+
+        void set(double);
 
         /* start()
         * ...Enables the PID controller.
@@ -64,55 +61,6 @@ class PID
         */
         void stop(); // Disable the PID controller
 
-
-        /* setGains(...)
-        * Sets the controller's P, I, and D gain values, optimizing
-        * the I and D values to reduce number of computations during
-        * control loop˘
-        * ...Parameters:
-        * ......double kp -- P gain value
-        * ......double ki -- I gain value
-        * ......double kd -- D gain value
-        * ...Returns:
-        * ......Nothing
-        */
-        void setGains(double, double, double);
-
-        /* setPeriod(...)
-        * Sets the period with which the calculation is performed 
-        * and adjusts the I and D gains accordingly
-        * ...Parameters:
-        * ......unsigned long newSampleTime
-        * ...Returns:
-        * ......Nothing
-        */
-        void setPeriod(unsigned long);
-
-        /* getKp()
-        * ...Returns:
-        * ......Current P gain value
-        */
-        double getKp();
-
-        /* getKi()
-        * ...Returns:
-        * ......Current I gain value
-        */
-        double getKi();
-
-        /* getKd()
-        * ...Returns:
-        * ......Current D gain value
-        */
-        double getKd();
-
-        /* getDirection()
-        * ...Returns:
-        * ......Current controller direction
-        * ......(Direct or Reverse)
-        */
-        Direction getDirection();
-
         /* isEnabled()
         * ...Returns:
         * ......true if controller is enabled, false otherwise
@@ -120,32 +68,19 @@ class PID
         bool isEnabled();
 
     private:
-        double clampToEndpoints(double); // clamps value to specified range
-
         /* The PID gains for the controller */
-        double kp;
-        double ki;
-        double kd;
+        int16_t k1;
+        int16_t k2;
+        int16_t k3;
 
-        /* The PID gains for returning to the user, original and un-optimized */
-        double kpDisp;
-        double kiDisp;
-        double kdDisp;
-
-        Direction direction; // Direct for +input -> +output
-                            // Reverse for  +input -> -output
-
-        /* Pointers to the user's input, output, and setpoint variables */
-        double *controllerInput;
-        double *controllerOutput;
-        double *controllerSetpoint;
+        int16_t pidOutput;
+        int16_t pidSetpoint;
         
         unsigned long prevTime; // for checking if period has elapsed
-        double errorSum; // this is the I-term, accumulated error
-        double prevError; // for tracking the 
+        int16_t e1, e2, e3; 
 
         unsigned long period; // update period in milliseconds
-        double outMin, outMax; // range for clamping the output
+        int16_t outMin, outMax; // range for clamping the output
 
         bool enabled;
 };

@@ -1,130 +1,80 @@
 #include "Arduino.h"
 #include "PID_lib.h"
 
-PID::PID(double* input, double* output, double* setpoint,
-         double initKp, double initKi, double initKd,
-         double outMin, double outMax, Direction direction,
+PID::PID(int16_t kp, int16_t ki, int16_t kd,
+         int16_t outMin, int16_t outMax,
          unsigned long period)
 {
-    this->controllerInput = input;
-    this->controllerOutput = output;
-    this->controllerSetpoint = setpoint;
+    this->pidOutput = 0;
+    this->pidSetpoint = 0;
 
     this->outMin = outMin;
     this->outMax = outMax;
 
-    this->direction = direction;
-
     this->period = period;
     
-    PID::setGains(initKp, initKi, initKd);
+    this->k1 =  kp + ki +     kd;
+    this->k2 = -kp      - 2 * kd;
+    this->k3 =                kd;
+
+    this->e1 = 0;
+    this->e2 = 0;
+    this->e3 = 0;
 
     this->prevTime = millis() - period;
 
     this->enabled = false;
 }
 
-bool PID::compute()
+int16_t PID::compute(double input)
 {
-    if (!this->enabled) return false; // Don't compute if the controller is not enabled
-
     unsigned long currTime = millis();
     unsigned long timeChange = currTime - prevTime;
-    if(timeChange >= this->period)
+    if(timeChange >= this->period && this->enabled)
     {
-        double input = *(this->controllerInput);
-        double error = *(this->controllerSetpoint) - input;
-        double dError = error - this->prevError;
+        int16_t deltaOutput = 0;
 
-        this->errorSum = PID::clampToEndpoints(this->errorSum + 
-                                               (this->ki * error)); // Keep track of accumulating
-                                                                    // error for I-term
+        e3 = e2;
+        e2 = e1;
+        e1 = this->pidSetpoint - (int16_t)(input * INT_RESOLUTION);
 
-        *(this->controllerOutput) = PID::clampToEndpoints((this->kp * error) + 
-                                                          this->errorSum + 
-                                                          (this->kd * dError));
+        deltaOutput = (this->k1 * e1) + (this->k2 * e2) + (this->k3 * e3);
 
-        this->prevError = error;
-        this->prevTime = currTime;
+        this->pidOutput += deltaOutput;
 
-        return true;
+        if (this->pidOutput > INT_RESOLUTION * this->outMax)
+        {
+            this->pidOutput = INT_RESOLUTION * this->outMax;
+        }
+        else if (this->pidOutput < INT_RESOLUTION * this->outMin)
+        {
+            this->pidOutput = INT_RESOLUTION * this->outMin;
+        }
     }
-    else
-        return false;
+    return this->pidOutput / INT_RESOLUTION;
+}
+
+void PID::set(double target)
+{
+    this->pidSetpoint = (int16_t)(target * INT_RESOLUTION);
 }
 
 void PID::start()
 {
-    this->errorSum = 0; // reset I-term
-    this->prevError = 0; // reset variable for D-term
+    this->e1 = 0; // reset e terms
+    this->e2 = 0;
+    this->e3 = 0;
+    this->pidOutput = this->outMin;
     this->enabled = true;
 }
 
 void PID::stop()
 {
-    *(this->controllerOutput) = this->outMin; // disable the output
+    this->pidOutput = this->outMin; // disable the output
     this->enabled = false;
-}
-
-void PID::setGains(double kp, double ki, double kd)
-{
-    if (kp < 0 || ki < 0 || kd < 0) return;
-
-    double periodInSec = ((double)this->period) / 1000.0;
-    this->kp = kp;
-    this->ki = ki * periodInSec; // do this now to save
-    this->kd = kd / periodInSec; // computations later
-
-    this->kpDisp = kp;
-    this->kiDisp = ki; // not optimized so the user can
-    this->kdDisp = kd; // retrieve actual gain values
-
-    if(this->direction == Reverse)
-    {
-        this->kp = 0 - this->kp;
-        this->ki = 0 - this->ki;
-        this->kd = 0 - this->kd;
-    }
-}
-
-void PID::setPeriod(unsigned long period)
-{
-    double ratio  = (double)period / (double)this->period;
-    this->ki *= ratio; // Adjust the I-term and D-term to
-    this->kd /= ratio; // account for the new period
-    this->period = period;
-}
-
-double PID::getKp()
-{
-    return  this->kpDisp;
-}
-
-double PID::getKi()
-{
-    return  this->kiDisp;
-}
-
-double PID::getKd()
-{
-    return  this->kdDisp;
-}
-
-Direction PID::getDirection()
-{
-    return this->direction;
 }
 
 bool PID::isEnabled()
 {
     return this->enabled;
-}
-
-double PID::clampToEndpoints(double val)
-{
-    if(val > this->outMax)
-        return this->outMax;
-    else if(val < this->outMin)
-        return this->outMin;
-    return val;
 }
