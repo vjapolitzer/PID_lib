@@ -41,7 +41,7 @@ class PID
         * ...Only computes if the controller has been enabled with
         * ...start() AND period has elapsed.
         * ...Returns:
-        * ......true if new output computed, false otherwise
+        * ......computed output value
         */
         int16_t compute(double);
 
